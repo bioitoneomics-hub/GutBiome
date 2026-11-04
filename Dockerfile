@@ -47,3 +47,4 @@ ENV PORT=10000
 EXPOSE 10000
 
 CMD ["sh", "-c", "npx next start -p ${PORT:-10000}"]
+

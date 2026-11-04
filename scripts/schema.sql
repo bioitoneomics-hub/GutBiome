@@ -51,3 +51,4 @@ CREATE TABLE IF NOT EXISTS `reports` (
   KEY `fk_reports_sample` (`sample_id`),
   CONSTRAINT `fk_reports_sample` FOREIGN KEY (`sample_id`) REFERENCES `samples` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
