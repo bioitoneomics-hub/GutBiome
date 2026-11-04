@@ -135,18 +135,28 @@ async function nextId() {
 }
 
 export async function listSamples(): Promise<SampleInput[]> {
-  await ensureSeeded();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [rows]: any = await pool.query("SELECT * FROM samples ORDER BY created_at DESC");
-  return rows.map(rowToSample);
+  try {
+    await ensureSeeded();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [rows]: any = await pool.query("SELECT * FROM samples ORDER BY created_at DESC");
+    return rows.map(rowToSample);
+  } catch (err) {
+    console.error("Database query error in listSamples, falling back to seed samples:", err);
+    return SEED_SAMPLES;
+  }
 }
 
 export async function getSample(id: string): Promise<SampleInput | undefined> {
-  await ensureSeeded();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [rows]: any = await pool.query("SELECT * FROM samples WHERE id = ? LIMIT 1", [id]);
-  if (!rows || rows.length === 0) return undefined;
-  return rowToSample(rows[0]);
+  try {
+    await ensureSeeded();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [rows]: any = await pool.query("SELECT * FROM samples WHERE id = ? LIMIT 1", [id]);
+    if (!rows || rows.length === 0) return SEED_SAMPLES.find((s) => s.id === id);
+    return rowToSample(rows[0]);
+  } catch (err) {
+    console.error("Database query error in getSample, falling back to seed sample:", err);
+    return SEED_SAMPLES.find((s) => s.id === id);
+  }
 }
 
 export async function getBiomTable(id: string): Promise<BiomColumnData | undefined> {
@@ -355,23 +365,28 @@ export async function deleteSample(id: string): Promise<boolean> {
 // ============================================================================
 
 export async function listReportsForSample(sampleId: string): Promise<ReportRecord[]> {
-  await ensureSeeded();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [rows]: any = await pool.query(
-    "SELECT * FROM reports WHERE sample_id = ? ORDER BY FIELD(report_type, 'doctor', 'patient', 'detailed')",
-    [sampleId]
-  );
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (rows || []).map((row: any) => ({
-    id: row.id,
-    sampleId: row.sample_id,
-    reportType: row.report_type,
-    status: row.status as ReportStatus,
-    signedOffBy: row.signed_off_by,
-    reportPayload: typeof row.report_payload === "string" ? JSON.parse(row.report_payload) : row.report_payload,
-    createdAt: formatDateTime(row.created_at),
-    updatedAt: formatDateTime(row.updated_at),
-  }));
+  try {
+    await ensureSeeded();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [rows]: any = await pool.query(
+      "SELECT * FROM reports WHERE sample_id = ? ORDER BY FIELD(report_type, 'doctor', 'patient', 'detailed')",
+      [sampleId]
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (rows || []).map((row: any) => ({
+      id: row.id,
+      sampleId: row.sample_id,
+      reportType: row.report_type,
+      status: row.status as ReportStatus,
+      signedOffBy: row.signed_off_by,
+      reportPayload: typeof row.report_payload === "string" ? JSON.parse(row.report_payload) : row.report_payload,
+      createdAt: formatDateTime(row.created_at),
+      updatedAt: formatDateTime(row.updated_at),
+    }));
+  } catch (err) {
+    console.error("Database query error in listReportsForSample:", err);
+    return [];
+  }
 }
 
 export async function getReportRecord(sampleId: string, reportType: "doctor" | "patient" | "detailed"): Promise<ReportRecord | undefined> {

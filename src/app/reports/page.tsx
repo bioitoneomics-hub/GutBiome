@@ -6,6 +6,8 @@ import { analyzeSample } from "@/lib/microbiome/engine";
 import { ArrowLeft } from "lucide-react";
 import { ReportsBatchManager } from "@/components/reports/reports-batch-manager";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Clinical Reports Directory | ONEOMICS MYGUTBIOME",
   description: "Browse, inspect, and access all generated doctor, patient, and detailed metagenomic reports.",

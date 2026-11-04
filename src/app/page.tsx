@@ -19,6 +19,8 @@ import { listSamples, getBiomTable, listReportsForSample } from "@/lib/store";
 import { analyzeSample } from "@/lib/microbiome/engine";
 import { MyGutBiomeLogo } from "@/components/ui/mygutbiome-logo";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Clinical Hub | ONEOMICS MYGUTBIOME",
   description:

@@ -7,6 +7,8 @@ import { CheckCircle2, FileCheck2, Clock, ShieldCheck, Database, ArrowRight, Dow
 import { ReportHubActions } from "@/components/reports/report-hub-actions";
 import { MyGutBiomeLogo } from "@/components/ui/mygutbiome-logo";
 
+export const dynamic = "force-dynamic";
+
 export default async function ReportHubPage({
   params,
 }: {

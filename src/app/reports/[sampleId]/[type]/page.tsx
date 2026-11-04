@@ -7,6 +7,8 @@ import { analyzeSample } from "@/lib/microbiome/engine";
 import { getBiomTable, getReportRecord, getSample } from "@/lib/store";
 import type { ReportType } from "@/lib/microbiome/types";
 
+export const dynamic = "force-dynamic";
+
 export default async function ReportViewPage({
   params,
 }: {

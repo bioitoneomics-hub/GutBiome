@@ -6,6 +6,8 @@ import { ReportToolbar } from "@/components/reports/report-toolbar";
 import { analyzeSample } from "@/lib/microbiome/engine";
 import { getBiomTable, getReportRecord, getSample } from "@/lib/store";
 
+export const dynamic = "force-dynamic";
+
 export default async function AllReportsPage({
   params,
 }: {
