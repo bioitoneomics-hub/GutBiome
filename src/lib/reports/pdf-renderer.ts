@@ -5,7 +5,7 @@ import { getSample, listSamples, getBiomTable, listReportsForSample } from "@/li
 import { analyzeSample } from "@/lib/microbiome/engine";
 import type { ReportType } from "@/lib/microbiome/types";
 
-export function getChromeExecutablePath(): string {
+export function getChromeExecutablePath(): string | null {
   const envPath = process.env.CHROME_PATH || process.env.PUPPETEER_EXECUTABLE_PATH;
   if (envPath && fs.existsSync(/* turbopackIgnore: true */ envPath)) return envPath;
 
@@ -24,9 +24,7 @@ export function getChromeExecutablePath(): string {
     if (fs.existsSync(/* turbopackIgnore: true */ p)) return p;
   }
 
-  throw new Error(
-    "Google Chrome or Chromium executable not found on server. Please install Chrome or configure CHROME_PATH."
-  );
+  return null;
 }
 
 export interface RenderedPdfItem {
@@ -112,6 +110,10 @@ export async function renderReportPdf(
   }
 
   const chromePath = getChromeExecutablePath();
+  if (!chromePath) {
+    throw new Error("HEADLESS_CHROME_UNAVAILABLE_ON_SERVERLESS");
+  }
+
   const browser = await puppeteer.launch({
     executablePath: chromePath,
     headless: true,
@@ -166,6 +168,98 @@ export async function renderBatchPdfs(
   if (!sampleIds.length) return [];
 
   const chromePath = getChromeExecutablePath();
+
+  // If Chrome is unavailable on serverless environment (e.g. Vercel), generate standalone A4 HTML dossiers
+  if (!chromePath) {
+    const results: RenderedPdfItem[] = [];
+    for (const sid of sampleIds) {
+      const sample = await getSample(sid);
+      if (!sample) continue;
+      const biom = await getBiomTable(sid);
+      const analysis = analyzeSample(sample, biom);
+      const dbReports = await listReportsForSample(sid);
+      const doctorRep = dbReports.find((r) => r.reportType === "doctor");
+
+      const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>MYGUTBIOME Report - ${sample.accession} (${sample.patientCode})</title>
+  <style>
+    @page { size: 210mm 297mm; margin: 15mm; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #143834; line-height: 1.5; padding: 24px; max-width: 900px; margin: 0 auto; background: #fafaf9; }
+    .card { background: white; border: 1px solid #dcdfe4; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .header { border-bottom: 2px solid #1f4f4a; padding-bottom: 15px; margin-bottom: 20px; }
+    .badge { display: inline-block; background: #e6f4f2; color: #1f4f4a; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+    .title { font-size: 24px; font-weight: bold; margin: 10px 0 5px; color: #143834; }
+    .meta-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+    .meta-table td { padding: 8px 12px; border: 1px solid #e0e5e4; font-size: 13px; }
+    .meta-table td.label { background: #f8faf9; font-weight: bold; width: 25%; color: #3d4c49; }
+    .score-box { background: #f0f7f5; border: 1px solid #1f4f4a; border-radius: 10px; padding: 18px; margin: 20px 0; text-align: center; }
+    .score { font-size: 40px; font-weight: bold; color: #143834; }
+    .section-title { font-size: 16px; font-weight: bold; border-left: 4px solid #1f4f4a; padding-left: 10px; margin: 20px 0 12px; color: #143834; }
+    .amr-alert { background: #fef2f2; border: 1px solid #f87171; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin: 10px 0; }
+    @media print {
+      body { padding: 0; background: white; }
+      .card { border: none; box-shadow: none; padding: 0; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="background: #143834; color: white; padding: 12px 18px; border-radius: 10px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+    <div><strong>ONEOMICS MYGUTBIOME</strong> Clinical Report Dossier (${sample.accession})</div>
+    <button onclick="window.print()" style="background: #9a7b3c; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px;">🖨️ Print / Save to A4 PDF</button>
+  </div>
+  <div class="card">
+    <div class="header">
+      <span class="badge">ONEOMICS · MYGUTBIOME CLINICAL DOSSIER</span>
+      <div class="title">${sample.displayName} (${reportType.toUpperCase()} REPORT)</div>
+      <div style="font-size: 13px; color: #5a6865;">Accession: <strong>${sample.accession}</strong> | MRN: <strong>${sample.patientCode}</strong> | Collection Date: ${sample.collectionDate}</div>
+    </div>
+
+    <table class="meta-table">
+      <tr><td class="label">Patient Name</td><td>${sample.displayName}</td><td class="label">Sex / Age</td><td>${sample.sex} / ${sample.age} yrs</td></tr>
+      <tr><td class="label">Clinical Indication</td><td>${sample.indication}</td><td class="label">Dietary Pattern</td><td>${sample.dietPattern}</td></tr>
+      <tr><td class="label">Recent Antibiotics</td><td>${sample.recentAntibiotics ? "Yes" : "No"}</td><td class="label">Sign-Off Status</td><td>${doctorRep?.status === "signed_off" ? "Certified (" + (doctorRep?.signedOffBy || "") + ")" : "Pending Clinical Review"}</td></tr>
+    </table>
+
+    <div class="score-box">
+      <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #5a6865; font-weight: bold;">Gut Microbiome Health Score</div>
+      <div class="score">${analysis.gutScore}/100</div>
+      <div style="font-size: 13px; color: #1f4f4a; margin-top: 4px;">Shannon Diversity: <strong>${analysis.diversity.shannon.toFixed(2)}</strong> | F/B Ratio: <strong>${analysis.diversity.firmicutesBacteroidota ? analysis.diversity.firmicutesBacteroidota.toFixed(2) : "N/A"}</strong></div>
+    </div>
+
+    ${analysis.amr.length > 0 ? `
+    <div class="section-title">Critical Antimicrobial Resistance (AMR) Findings</div>
+    ${analysis.amr.map(a => `<div class="amr-alert"><strong>${a.gene}</strong> (${a.class}): ${a.interpretation} [Risk: ${a.level.toUpperCase()}]</div>`).join("")}
+    ` : ""}
+
+    <div class="section-title">Top Keystone Sentinels & Pathobionts</div>
+    <table class="meta-table">
+      <tr style="background:#f8faf9; font-weight:bold;"><td>Taxon</td><td>Relative Abundance</td><td>Classification</td></tr>
+      ${analysis.beneficial.slice(0, 5).map(b => `<tr><td>${b.taxon}</td><td>${b.relativeAbundance}%</td><td style="color:#047857; font-weight:600;">Beneficial Sentinel</td></tr>`).join("")}
+      ${analysis.pathogens.filter(p => p.relativeAbundance > 0).map(p => `<tr><td>${p.taxon}</td><td>${p.relativeAbundance}%</td><td style="color:#b91c1c; font-weight:600;">Pathobiont / Pathogen</td></tr>`).join("")}
+    </table>
+
+    <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #e0e5e4; font-size: 11px; color: #7a8885; text-align: center;">
+      ONEOMICS MYGUTBIOME · Clinical Metagenomic Report · Generated on ${new Date().toISOString().slice(0, 10)}
+    </div>
+  </div>
+</body>
+</html>`;
+
+      results.push({
+        sampleId: sid,
+        accession: sample.accession,
+        patientCode: sample.patientCode,
+        filename: `MYGUTBIOME_${sample.accession}_${sample.patientCode}_${reportType.toUpperCase()}_REPORT.html`,
+        buffer: Buffer.from(htmlContent, "utf-8"),
+      });
+    }
+    return results;
+  }
+
   let browser: Browser | null = null;
   const results: RenderedPdfItem[] = [];
 

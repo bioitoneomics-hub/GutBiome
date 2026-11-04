@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   X,
   ShieldCheck,
   Download,
+  Printer,
 } from "lucide-react";
 
 const TYPES: { id: ReportType; label: string }[] = [
@@ -47,28 +48,37 @@ export function ReportToolbar({
   const isSignedOff = currentRecord?.status === "signed_off";
   const targetReportType = type === "all" ? "doctor" : type;
 
+  // Auto-trigger native print dialog if ?print=true parameter is present
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("print=true")) {
+      const timer = setTimeout(() => {
+        window.print();
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   async function handleDownloadPdf() {
     setIsDownloadingPdf(true);
     try {
       const pdfUrl = `/api/reports/${sampleId}/pdf?type=${type}`;
       const res = await fetch(pdfUrl);
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to generate PDF document");
+      if (res.ok && res.headers.get("content-type")?.includes("application/pdf")) {
+        const blob = await res.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = `MYGUTBIOME_${sampleId.toUpperCase()}_${type.toUpperCase()}_REPORT.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      } else {
+        // Direct browser A4 print engine fallback (100% reliable on Vercel cloud)
+        window.print();
       }
-
-      const blob = await res.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = `MYGUTBIOME_${sampleId.toUpperCase()}_${type.toUpperCase()}_REPORT.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
-    } catch (err: any) {
-      console.error("PDF download error:", err);
-      alert(err.message || "Failed to download PDF. Please use browser print instead.");
+    } catch (_) {
+      window.print();
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -176,13 +186,24 @@ export function ReportToolbar({
               </button>
             )}
 
+            {/* Browser Native High-Fidelity A4 Print Button */}
+            <button
+              type="button"
+              onClick={() => window.print()}
+              title="Print or save pixel-perfect vector A4 PDF directly using your browser print engine"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#1f4f4a]/20 bg-white px-3.5 py-1.5 text-xs font-semibold text-[#143834] hover:bg-[#faf8f2] transition-colors shadow-2xs cursor-pointer"
+            >
+              <Printer className="h-3.5 w-3.5 text-[#1f4f4a]" />
+              <span>Print / Save PDF</span>
+            </button>
+
             {/* High-Fidelity Chromium PDF Engine Download Button */}
             <button
               type="button"
               disabled={isDownloadingPdf}
               onClick={handleDownloadPdf}
-              title="Generate and download exact pixel-perfect A4 PDF via headless Chromium engine"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#9a7b3c] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#856931] transition-colors shadow-xs disabled:opacity-60"
+              title="Generate and download exact pixel-perfect A4 PDF"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#9a7b3c] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#856931] transition-colors shadow-xs disabled:opacity-60 cursor-pointer"
             >
               {isDownloadingPdf ? (
                 <>
