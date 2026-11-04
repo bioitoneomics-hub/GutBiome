@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
-import { Roboto, Source_Serif_4, Geist_Mono } from "next/font/google";
+import { Roboto_Flex, Source_Serif_4, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { AppShell } from "@/components/layout/app-shell";
 import { AuthGate } from "@/components/auth-gate";
 
-const roboto = Roboto({
-  weight: ["300", "400", "500", "700"],
-  style: ["normal", "italic"],
+const roboto = Roboto_Flex({
   subsets: ["latin"],
   variable: "--font-roboto",
   display: "swap",
