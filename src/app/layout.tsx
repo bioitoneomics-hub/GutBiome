@@ -3,6 +3,7 @@ import { Roboto, Source_Serif_4, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { AppShell } from "@/components/layout/app-shell";
+import { AuthGate } from "@/components/auth-gate";
 
 const roboto = Roboto({
   weight: ["300", "400", "500", "700"],
@@ -35,7 +36,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       className={`${roboto.variable} ${serif.variable} ${mono.variable} h-full antialiased`}
     >
       <body className="relative flex min-h-full flex-col font-sans">
-        <AppShell>{children}</AppShell>
+        <AuthGate>
+          <AppShell>{children}</AppShell>
+        </AuthGate>
       </body>
     </html>
   );
