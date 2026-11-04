@@ -17,6 +17,13 @@ export const pool =
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 0,
+    ssl:
+      process.env.DB_SSL === "true" ||
+      process.env.DB_HOST?.includes("tidbcloud") ||
+      process.env.DB_HOST?.includes("aivencloud") ||
+      process.env.DB_HOST?.includes("railway")
+        ? { minVersion: "TLSv1.2", rejectUnauthorized: true }
+        : undefined,
   });
 
 if (process.env.NODE_ENV !== "production") {
