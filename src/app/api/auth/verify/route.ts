@@ -109,6 +109,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // The launch token has a 10-minute window to be consumed.
+    // Once verified, grant a full 8-hour continuous working session in this tab!
+    const sessionDurationMs = 8 * 60 * 60 * 1000;
     return NextResponse.json({
       valid: true,
       user: {
@@ -116,7 +119,7 @@ export async function POST(request: NextRequest) {
         role: payload.role || "user",
         category: "dtc",
       },
-      expiresAt: (payload.exp || now + 8 * 3600) * 1000,
+      expiresAt: Date.now() + sessionDurationMs,
     });
   } catch (err: any) {
     console.error("Token verification exception:", err);

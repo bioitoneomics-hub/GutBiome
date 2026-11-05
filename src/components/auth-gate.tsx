@@ -124,6 +124,12 @@ export function AuthGate({ children }: AuthGateProps) {
       if (stored) {
         const parsed: UserSession = JSON.parse(stored);
         if (parsed.expiresAt && parsed.expiresAt > Date.now()) {
+          // Slide the session expiration window on activity (8 hours from now)
+          parsed.expiresAt = Date.now() + 8 * 60 * 60 * 1000;
+          try {
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+          } catch (_) {}
+
           setSessionUser(parsed);
           setAuthStatus("authorized");
           return;
