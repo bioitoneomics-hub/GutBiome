@@ -3,6 +3,8 @@ import crypto from "crypto";
 
 const SHARED_SECRET =
   process.env.NIPTON_JWT_SECRET ||
+  process.env.ONEOMICS_AUTH_SECRET ||
+  process.env.JWT_SECRET ||
   "replace_with_a_very_long_random_secret_string_here_min32chars";
 
 // In-memory set of consumed token identifiers (nonces) to prevent token reuse
