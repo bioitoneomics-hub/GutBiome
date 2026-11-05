@@ -26,7 +26,7 @@ interface UserSession {
 
 const STORAGE_KEY = "oneomics_gutbiome_session";
 const NIPTON_PORTAL_URL =
-  process.env.NEXT_PUBLIC_NIPTON_PORTAL_URL || "http://localhost:3000";
+  process.env.NEXT_PUBLIC_NIPTON_PORTAL_URL || "https://nipton.in";
 
 export function AuthGate({ children }: AuthGateProps) {
   const [authStatus, setAuthStatus] = useState<
